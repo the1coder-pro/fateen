@@ -67,7 +67,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 },
                 child: const Text(
                   'إعداد جدول',
-                  style: TextStyle(fontSize: 15),
+                  style: TextStyle(fontSize: 20),
                 ),
               ),
               const SizedBox(height: 20),
@@ -293,72 +293,6 @@ class _TablesViewPageState extends State<TablesViewPage> {
     });
   }
 
-  // List<Course> getTable(List<Course> courses) {
-  //   var table = <Course>[];
-  //   for (var course in courses) {
-  //     // no duplicate courses (same sections)
-  //     if (table.any((element) =>
-  //         element.code == course.code &&
-  //         element.instructor == course.instructor &&
-  //         element.type == course.type)) {
-  //       continue;
-  //     }
-
-  //     // if a course's type is "عملي" with section like 49 then find the "نظري" course with same course title also with same section but added 40 (like when section is 9 the second would be 49) if it is available and so on
-  //     if (course.type == "عملي") {
-  //       var section = int.parse(course.section);
-  //       var theoreticalCourse = courses
-  //           .where(
-  //             (element) =>
-  //                 element.type == "نظري" &&
-  //                 element.code == course.code &&
-  //                 element.status == "متاحه" &&
-  //                 // if the section is 49 then the theoretical course should be 09
-  //                 element.section ==
-  //                     "${(section - 40) < 10 ? "0" : ""}${section - 40}",
-  //           )
-  //           .toList()
-  //           .firstOrNull;
-  //       if (theoreticalCourse != null) {
-  //         table.add(theoreticalCourse);
-  //       }
-  //     } else {
-  //       var practicalCourse = courses
-  //           .where(
-  //             (element) =>
-  //                 element.type == "عملي" &&
-  //                 element.code == course.code &&
-  //                 // if the section is 09 then the practical course should be 49
-  //                 element.section == "${int.parse(course.section) + 40}",
-  //           )
-  //           .toList()
-  //           .firstOrNull;
-  //       if (practicalCourse != null) {
-  //         table.add(practicalCourse);
-  //       }
-  //     }
-  //     if (table.isEmpty) {
-  //       table.add(course);
-  //     } else {
-  //       var isConflict = false;
-  //       for (var courseInTable in table) {
-  //         if (courseInTable.days == course.days &&
-  //             courseInTable.time == course.time) {
-  //           isConflict = true;
-  //           break;
-  //         }
-  //       }
-  //       if (!isConflict) {
-  //         table.add(course);
-  //       }
-  //     }
-  //   }
-
-  //   // remove the courses that have same instructor and same type and same code but different section
-
-  //   return table;
-  // }
-
   @override
   void initState() {
     super.initState();
@@ -431,46 +365,6 @@ class _TablesViewPageState extends State<TablesViewPage> {
               padding: const EdgeInsets.all(8.0),
               child: FilledButton(
                   onPressed: () {
-                    var toBeShownSchedules = [];
-
-                    // // combine courses with sections (41 & 1) (42 & 2) (51 & 11)
-                    // List<List<Course>> practicalAndTheoreticalCoursesCombined =
-                    //     [];
-                    // for (var course in visiableCourses) {
-                    //   if (course.type == "عملي") {
-                    //     var theoreticalCourse = visiableCourses
-                    //         .where(
-                    //           (element) =>
-                    //               element.type == "نظري" &&
-                    //               element.code == course.code &&
-                    //               element.section ==
-                    //                   "${int.parse(course.section) - 40}",
-                    //         )
-                    //         .toList()
-                    //         .firstOrNull;
-                    //     if (theoreticalCourse != null) {
-                    //       practicalAndTheoreticalCoursesCombined
-                    //           .add([theoreticalCourse, course]);
-                    //     }
-                    //   }
-                    // }
-
-                    // // add rest courses
-                    // for (var course in visiableCourses) {
-                    //   if (!practicalAndTheoreticalCoursesCombined
-                    //       .any((element) => element.contains(course))) {
-                    //     practicalAndTheoreticalCoursesCombined.add([course]);
-                    //   }
-                    // }
-
-                    // // add the courses that are not combined
-                    // for (var course in visiableCourses) {
-                    //   if (!registeredCodes.contains(course.code)) {
-                    //     practicalAndTheoreticalCoursesCombined.add([course]);
-                    //     registeredCodes.add(course.code);
-                    //   }
-                    // }
-
                     List<Schedule> schedules = [];
 
                     for (var course in visiableCourses
@@ -540,14 +434,24 @@ class _TablesViewPageState extends State<TablesViewPage> {
                           CRNs: visiableCourses.map((e) => e.crn).toList()));
                     }
 
+                    // merge the schedules
+
                     Navigator.push(context,
                         MaterialPageRoute(builder: (context) {
+                      var generatedSchedules =
+                          combineSchedulesWithoutConflicts(schedules);
                       return Scaffold(
                           appBar: AppBar(),
                           body: ListView.builder(
-                              itemCount: schedules.length,
+                              itemCount: generatedSchedules.length,
                               itemBuilder: (context, index) {
-                                return cardOfSchedule(schedules[index]);
+                                return Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Column(children: [
+                                    Text("الجدول رقم ${index + 1}"),
+                                    cardOfSchedule(generatedSchedules[index])
+                                  ]),
+                                );
                               }));
                     }));
                   },
@@ -572,6 +476,8 @@ Widget cardOfSchedule(Schedule schedule) {
         const Text("الثلاثاء"),
         for (var lecture in schedule.tuesdayLectures) LectureListTile(lecture),
         const Text("الأربعاء"),
+        // show the lectures of the day but no duplicate codes and types in the same day
+
         for (var lecture in schedule.wednesdayLectures)
           LectureListTile(lecture),
         const Text("الخميس"),
@@ -580,30 +486,6 @@ Widget cardOfSchedule(Schedule schedule) {
     ),
   );
 }
-
-// Widget cardOfTable(List<Course> table) {
-//   return Card(
-//       child: Column(
-//     children: [
-//       // each day
-//       const Text("الأحد"),
-//       for (var course in table)
-//         if (course.days.contains("ح")) LectureListTile(course),
-//       const Text("الاثنين"),
-//       for (var course in table)
-//         if (course.days.contains("ن")) LectureListTile(course),
-//       const Text("الثلاثاء"),
-//       for (var course in table)
-//         if (course.days.contains("ث")) LectureListTile(course),
-//       const Text("الأربعاء"),
-//       for (var course in table)
-//         if (course.days.contains("ر")) LectureListTile(course),
-//       const Text("الخميس"),
-//       for (var course in table)
-//         if (course.days.contains("خ")) LectureListTile(course)
-//     ],
-//   ));
-// }
 
 class LectureListTile extends StatelessWidget {
   const LectureListTile(
@@ -620,7 +502,7 @@ class LectureListTile extends StatelessWidget {
       subtitle: Text(lecture.instructor),
       trailing: Text("${lecture.startTime} - ${lecture.endTime}"),
       leading: Chip(
-        label: Text("${lecture.type}(${lecture.section})"),
+        label: Text("${lecture.type} (${lecture.section})"),
       ),
     );
   }
@@ -677,4 +559,79 @@ class Lecture {
       required this.instructor,
       required this.startTime,
       required this.endTime});
+}
+
+List<Schedule> combineSchedulesWithoutConflicts(List<Schedule> schedules) {
+  List<Schedule> resultSchedules = [];
+
+  for (int i = 0; i < schedules.length; i++) {
+    for (int j = i + 1; j < schedules.length; j++) {
+      Schedule? combinedSchedule =
+          _combineTwoSchedules(schedules[i], schedules[j]);
+      if (combinedSchedule != null) {
+        resultSchedules.add(combinedSchedule);
+      }
+    }
+  }
+
+  return resultSchedules;
+}
+
+Schedule? _combineTwoSchedules(Schedule schedule1, Schedule schedule2) {
+  Schedule combinedSchedule = Schedule(
+    sundayLectures: [],
+    mondayLectures: [],
+    tuesdayLectures: [],
+    wednesdayLectures: [],
+    thursdayLectures: [],
+    codes: [],
+    CRNs: [],
+  );
+
+  if (!_addLectures(combinedSchedule.sundayLectures, schedule1.sundayLectures,
+      schedule2.sundayLectures)) return null;
+  if (!_addLectures(combinedSchedule.mondayLectures, schedule1.mondayLectures,
+      schedule2.mondayLectures)) return null;
+  if (!_addLectures(combinedSchedule.tuesdayLectures, schedule1.tuesdayLectures,
+      schedule2.tuesdayLectures)) return null;
+  if (!_addLectures(combinedSchedule.wednesdayLectures,
+      schedule1.wednesdayLectures, schedule2.wednesdayLectures)) return null;
+  if (!_addLectures(combinedSchedule.thursdayLectures,
+      schedule1.thursdayLectures, schedule2.thursdayLectures)) return null;
+
+  combinedSchedule.codes.addAll(schedule1.codes);
+  combinedSchedule.codes.addAll(schedule2.codes);
+  combinedSchedule.CRNs.addAll(schedule1.CRNs);
+  combinedSchedule.CRNs.addAll(schedule2.CRNs);
+
+  return combinedSchedule;
+}
+
+bool _addLectures(List<Lecture> targetList, List<Lecture> lectures1,
+    List<Lecture> lectures2) {
+  Map<String, Lecture> seenLectures = {};
+
+  List<Lecture> allLectures = [...lectures1, ...lectures2];
+
+  for (var lecture in allLectures) {
+    String key = '${lecture.code}_${lecture.type}';
+
+    if (seenLectures.containsKey(key)) {
+      continue;
+    }
+
+    bool conflict = targetList.any((l) =>
+        l.startTime == lecture.startTime &&
+        l.endTime == lecture.endTime &&
+        l.day == lecture.day);
+
+    if (conflict) {
+      return false;
+    }
+
+    seenLectures[key] = lecture;
+    targetList.add(lecture);
+  }
+
+  return true;
 }
